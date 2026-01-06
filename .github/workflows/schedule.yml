@@ -1,0 +1,71 @@
+name: Auto-merge most upvoted PR
+
+on:
+  # schedule:
+  #   - cron: "0 2 * * *" # daily at 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = "skridlevsky";
+            const repo = "openchaos";
+
+            // 1. Get open PRs
+            const pulls = await github.paginate(
+              github.rest.pulls.list,
+              { owner, repo, state: "open" }
+            );
+
+            if (pulls.length === 0) {
+              console.log("No open PRs");
+              return;
+            }
+
+            let bestPr = null;
+            let bestScore = -Infinity;
+
+            for (const pr of pulls) {
+              // 2. Get reactions (PRs are issues)
+              const reactions = await github.paginate(
+                github.rest.reactions.listForIssue,
+                {
+                  owner,
+                  repo,
+                  issue_number: pr.number,
+                  mediaType: { previews: ["squirrel-girl"] },
+                }
+              );
+
+              // 3. Calculate score
+              let score = 0;
+              for (const r of reactions) {
+                if (r.content === "+1") score += 1;
+                if (r.content === "-1") score -= 1;
+              }
+
+              console.log(`PR #${pr.number}: score ${score}`);
+
+              if (score > bestScore) {
+                bestScore = score;
+                bestPr = pr;
+              }
+            }
+
+            if (!bestPr || bestScore <= 0) {
+              console.log("No PR has a positive score. Skipping merge.");
+              return;
+            }
+
+            console.log(
+              `Merging PR #${bestPr.number} with score ${bestScore}`
+            );
