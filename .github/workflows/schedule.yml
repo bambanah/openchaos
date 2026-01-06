@@ -2,8 +2,12 @@ name: Auto-merge most upvoted PR
 
 on:
   # schedule:
-  #   - cron: "0 2 * * *" # daily at 02:00 UTC
+  #   - cron: "0 9 * * 0" # weekly at 09:00 UTC
   workflow_dispatch:
+    inputs:
+      dry-run:
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -17,8 +21,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const owner = "skridlevsky";
-            const repo = "openchaos";
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
             // 1. Get open PRs
             const pulls = await github.paginate(
@@ -69,3 +73,8 @@ jobs:
             console.log(
               `Merging PR #${bestPr.number} with score ${bestScore}`
             );
+
+            if (process.env.DRY_RUN === "true") {
+              console.log("Dry run. Skipping merge.");
+              return;
+            }
