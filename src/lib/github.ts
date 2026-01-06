@@ -69,20 +69,38 @@ async function getPRVotes(
   repo: string,
   prNumber: number
 ): Promise<number> {
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/reactions`,
-    {
-      headers: {
-        Accept: "application/vnd.github.squirrel-girl-preview+json",
-      },
-      next: { revalidate: 300 },
-    }
-  );
+  let allReactions: GitHubReaction[] = [];
+  let page = 1;
 
-  if (!response.ok) {
-    return 0;
+  while (true) {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/reactions?per_page=100&page=${page}`,
+      {
+        headers: {
+          Accept: "application/vnd.github.squirrel-girl-preview+json",
+        },
+        next: { revalidate: 300 },
+      }
+    );
+
+    if (!response.ok) {
+      break;
+    }
+
+    const reactions: GitHubReaction[] = await response.json();
+
+    if (reactions.length === 0) {
+      break;
+    }
+
+    allReactions = allReactions.concat(reactions);
+
+    if (reactions.length < 100) {
+      break;
+    }
+
+    page++;
   }
 
-  const reactions: GitHubReaction[] = await response.json();
-  return reactions.filter((r) => r.content === "+1").length;
+  return allReactions.filter((r) => r.content === "+1").length;
 }
