@@ -63,12 +63,19 @@ jobs:
               console.log(`PR #${pr.number}: score ${score}`);
 
               if (score > bestScore) {
-                const prDetails = await github.rest.pulls.get({
-                  owner, repo, pull_number: pr.number
-                });
-                console.log(prDetails);
-                
-                if (pr.draft || !prDetails.mergeable) {
+                // Poll the GitHub API to check if the PR is mergeable
+                let mergeable = null;
+                do {
+                  const prDetails = await github.rest.pulls.get({
+                    owner, repo, pull_number: pr.number
+                  });
+
+                  mergeable = prDetails.data.mergeable;
+
+                  if (mergeable === null) await new Promise(resolve => setTimeout(resolve, 1000));
+                } while (mergeable === null);
+
+                if (pr.draft || !mergeable) {
                   console.log(
                     `PR #${pr.number} is not mergeable. Skipping merge.`
                   );
