@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          env:
-            DRY_RUN: ${{ github.event.inputs.dry-run }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
