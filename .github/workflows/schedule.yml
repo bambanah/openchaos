@@ -63,8 +63,12 @@ jobs:
               console.log(`PR #${pr.number}: score ${score}`);
 
               if (score > bestScore) {
-                console.log(pr)
-                if (!pr.mergeable || pr.mergeable_state !== "clean" || pr.draft) {
+                const prDetails = await github.rest.pulls.get({
+                  owner, repo, pull_number: pr.number
+                });
+                console.log(prDetails);
+                
+                if (pr.draft || !prDetails.mergeable) {
                   console.log(
                     `PR #${pr.number} is not mergeable. Skipping merge.`
                   );
